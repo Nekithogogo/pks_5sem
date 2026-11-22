@@ -1,0 +1,3 @@
+package ru.mirea.autosalon.api.service;
+import org.junit.jupiter.api.Test; import ru.mirea.autosalon.api.domain.*; import static org.assertj.core.api.Assertions.*;
+class RequestRulesTest { RequestRules rules=new RequestRules(); @Test void calculatesPriorities(){assertThat(rules.priority(RequestStatus.NEW,true)).isEqualTo(RequestPriority.HIGH);assertThat(rules.priority(RequestStatus.CONFIRMED,true)).isEqualTo(RequestPriority.MEDIUM);assertThat(rules.priority(RequestStatus.CONFIRMED,false)).isEqualTo(RequestPriority.LOW);assertThat(rules.priority(RequestStatus.COMPLETED,true)).isEqualTo(RequestPriority.NONE);} }

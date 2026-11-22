@@ -1,0 +1,3 @@
+package ru.mirea.autosalon.api.repository;
+import org.springframework.data.jpa.repository.JpaRepository; import ru.mirea.autosalon.api.domain.Client; import java.util.*;
+public interface ClientRepository extends JpaRepository<Client,Long> { Optional<Client> findByPublicId(UUID id); @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE) @org.springframework.data.jpa.repository.Query("select e from Client e where e.publicId = :id") Optional<Client> lockByPublicId(UUID id); Optional<Client> findByPhone(String phone); List<Client> findAllByOrderByFullNameAsc(); }

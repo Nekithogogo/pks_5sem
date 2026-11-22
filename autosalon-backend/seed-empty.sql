@@ -1,0 +1,1 @@
+-- Empty initial data; create clients and cars in the application.

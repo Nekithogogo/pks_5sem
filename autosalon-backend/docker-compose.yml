@@ -1,0 +1,77 @@
+name: autosalon-kr3
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: autosalon
+      POSTGRES_USER: autosalon_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - autosalon_kr3_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-55434}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autosalon_app -d autosalon"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  prepare-kr1:
+    image: postgres:16-alpine
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: autosalon_app
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./prepare-db.sh:/seed/prepare-db.sh:ro
+      - ./src/main/resources/db/migration/V1__base.sql:/seed/V1__base.sql:ro
+      - type: bind
+        source: ./seed-empty.sql
+        target: /seed/kr1-data.sql
+        read_only: true
+        bind:
+          create_host_path: false
+    entrypoint: ["/bin/sh", "/seed/prepare-db.sh"]
+  backend:
+    image: maven:3.9.11-eclipse-temurin-21
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+      prepare-kr1:
+        condition: service_completed_successfully
+    environment:
+      TZ: ${APP_TIME_ZONE:-Europe/Moscow}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/autosalon_kr1
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "1"
+      SPRING_DATASOURCE_USERNAME: autosalon_app
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?Set JWT_SECRET_BASE64 in .env}
+      JWT_ISSUER: autosalon
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:?Set BOOTSTRAP_ADMIN_EMAIL in .env}
+      BOOTSTRAP_ADMIN_NAME: Администратор
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
+      CORS_ALLOWED_ORIGINS: http://localhost:8080
+    volumes:
+      - ./pom.xml:/app/pom.xml:ro
+      - ./src:/app/src:ro
+      - autosalon_kr3_maven:/root/.m2
+      - autosalon_kr3_build:/app/target
+    command: ["mvn", "-B", "-ntp", "-DskipTests", "spring-boot:run"]
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+volumes:
+  autosalon_kr3_data:
+  autosalon_kr3_maven:
+  autosalon_kr3_build:

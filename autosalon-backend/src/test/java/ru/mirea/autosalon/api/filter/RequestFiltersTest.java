@@ -1,0 +1,8 @@
+package ru.mirea.autosalon.api.filter;
+import org.junit.jupiter.api.Test; import org.springframework.beans.factory.annotation.Autowired; import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest; import org.springframework.test.context.ActiveProfiles; import java.time.*; import java.math.*; import java.util.*; import ru.mirea.autosalon.api.domain.*; import ru.mirea.autosalon.api.repository.*; import static org.assertj.core.api.Assertions.*;
+@DataJpaTest @ActiveProfiles("test") class RequestFiltersTest {
+ @Autowired CarRepository cars; @Autowired ClientRepository clients; @Autowired RequestRepository requests;
+ @Test void filtersByStatusCarAndDuration(){Car car=new Car();car.brand="Toyota";car.model="Camry";car.manufactureYear=2024;car.vin="XW7BF4FK10S123451";car.color="Белый";car.price=new BigDecimal("3000000");car.status="AVAILABLE";cars.save(car);Client client=new Client();client.fullName="Иванов Иван";client.phone="+79161234501";client.birthDate=LocalDate.of(1990,1,1);client.licenseNumber="7712345601";clients.save(client);TestDriveRequest request=new TestDriveRequest();request.externalId="TD-1";request.car=car;request.client=client;request.scheduledAt=LocalDateTime.now().plusDays(1);request.durationMinutes=60;request.status=RequestStatus.NEW;request.priority=RequestPriority.MEDIUM;requests.saveAndFlush(request);
+ var filter=new RequestFilters.Filter("иванов",car.publicId,RequestStatus.NEW,false,RequestPriority.MEDIUM,null,false,45,90);assertThat(requests.findAll(RequestFilters.from(filter))).hasSize(1);
+ var other=new RequestFilters.Filter("иванов",car.publicId,RequestStatus.COMPLETED,null,null,null,false,null,null);assertThat(requests.findAll(RequestFilters.from(other))).isEmpty(); }
+}
